@@ -1,9 +1,9 @@
-import * as prom from 'prom-client';
-import { WebSocket } from 'uWebSockets.js';
-import { Log } from './../log';
-import { MetricsInterface } from './metrics-interface';
-import { PrometheusMetricsDriver } from './prometheus-metrics-driver';
-import { Server } from '../server';
+import * as prom from "prom-client";
+import { WebSocket } from "uWebSockets.js";
+import { Log } from "./../log";
+import { MetricsInterface } from "./metrics-interface";
+import { PrometheusMetricsDriver } from "./prometheus-metrics-driver";
+import { Server } from "../server";
 
 export class Metrics implements MetricsInterface {
     /**
@@ -15,17 +15,17 @@ export class Metrics implements MetricsInterface {
      * Initialize the Prometheus exporter.
      */
     constructor(protected server: Server) {
-        if (server.options.metrics.driver === 'prometheus') {
+        if (server.options.metrics.driver === "prometheus") {
             this.driver = new PrometheusMetricsDriver(server);
         } else {
-            Log.error('No metrics driver specified.');
+            Log.error("No metrics driver specified.");
         }
     }
 
     /**
      * Handle a new connection.
      */
-    markNewConnection(ws: WebSocket): void {
+    markNewConnection(ws: WebSocket<unknown>): void {
         if (this.server.options.metrics.enabled) {
             this.driver.markNewConnection(ws);
         }
@@ -34,7 +34,7 @@ export class Metrics implements MetricsInterface {
     /**
      * Handle a disconnection.
      */
-    markDisconnection(ws: WebSocket): void {
+    markDisconnection(ws: WebSocket<unknown>): void {
         if (this.server.options.metrics.enabled) {
             this.driver.markDisconnection(ws);
         }
@@ -43,7 +43,11 @@ export class Metrics implements MetricsInterface {
     /**
      * Handle a new API message event being received and sent out.
      */
-    markApiMessage(appId: string, incomingMessage: any, sentMessage: any): void {
+    markApiMessage(
+        appId: string,
+        incomingMessage: any,
+        sentMessage: any,
+    ): void {
         if (this.server.options.metrics.enabled) {
             this.driver.markApiMessage(appId, incomingMessage, sentMessage);
         }
@@ -77,7 +81,10 @@ export class Metrics implements MetricsInterface {
     /**
      * Track the fulfillings in which horizontal adapter resolves requests from other nodes.
      */
-    trackHorizontalAdapterResolvedPromises(appId: string, resolved = true): void {
+    trackHorizontalAdapterResolvedPromises(
+        appId: string,
+        resolved = true,
+    ): void {
         this.driver.trackHorizontalAdapterResolvedPromises(appId, resolved);
     }
 
@@ -88,16 +95,16 @@ export class Metrics implements MetricsInterface {
         this.driver.markHorizontalAdapterRequestSent(appId);
     }
 
-     /**
-      * Handle a new horizontal adapter request that was marked as received.
-      */
+    /**
+     * Handle a new horizontal adapter request that was marked as received.
+     */
     markHorizontalAdapterRequestReceived(appId: string): void {
         this.driver.markHorizontalAdapterRequestReceived(appId);
     }
 
-     /**
-      * Handle a new horizontal adapter response from other node.
-      */
+    /**
+     * Handle a new horizontal adapter response from other node.
+     */
     markHorizontalAdapterResponseReceived(appId: string): void {
         this.driver.markHorizontalAdapterResponseReceived(appId);
     }
@@ -107,7 +114,7 @@ export class Metrics implements MetricsInterface {
      */
     getMetricsAsPlaintext(): Promise<string> {
         if (!this.server.options.metrics.enabled) {
-            return Promise.resolve('');
+            return Promise.resolve("");
         }
 
         return this.driver.getMetricsAsPlaintext();
@@ -116,7 +123,9 @@ export class Metrics implements MetricsInterface {
     /**
      * Get the stored metrics as JSON.
      */
-    getMetricsAsJson(): Promise<prom.metric[]|void> {
+    getMetricsAsJson():
+        | Promise<prom.Metric[] | void>
+        | Promise<prom.MetricObjectWithValues<prom.MetricValue<string>>[]> {
         if (!this.server.options.metrics.enabled) {
             return Promise.resolve();
         }

@@ -1,5 +1,5 @@
-import * as prom from 'prom-client';
-import { WebSocket } from 'uWebSockets.js';
+import * as prom from "prom-client";
+import { WebSocket } from "uWebSockets.js";
 
 export interface MetricsInterface {
     /**
@@ -10,12 +10,12 @@ export interface MetricsInterface {
     /**
      * Handle a new connection.
      */
-    markNewConnection(ws: WebSocket): void;
+    markNewConnection(ws: WebSocket<unknown>): void;
 
     /**
      * Handle a disconnection.
      */
-    markDisconnection(ws: WebSocket): void;
+    markDisconnection(ws: WebSocket<unknown>): void;
 
     /**
      * Handle a new API message event being received and sent out.
@@ -40,7 +40,10 @@ export interface MetricsInterface {
     /**
      * Track the fulfillings in which horizontal adapter resolves requests from other nodes.
      */
-    trackHorizontalAdapterResolvedPromises(appId: string, resolved?: boolean): void;
+    trackHorizontalAdapterResolvedPromises(
+        appId: string,
+        resolved?: boolean,
+    ): void;
 
     /**
      * Handle a new horizontal adapter request sent.
@@ -65,7 +68,9 @@ export interface MetricsInterface {
     /**
      * Get the stored metrics as JSON.
      */
-    getMetricsAsJson(): Promise<prom.metric[]|void>;
+    getMetricsAsJson():
+        | Promise<prom.Metric[] | void>
+        | Promise<prom.MetricObjectWithValues<prom.MetricValue<string>>[]>;
 
     /**
      * Reset the metrics at the server level.

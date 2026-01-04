@@ -16,7 +16,7 @@ import type { WebSocket } from "uWebSockets.js";
 const ab2str = require("arraybuffer-to-string");
 const Pusher = require("pusher");
 
-type ExtendedWebSocket<T = unknown> = WebSocket<T> & {
+type ExtendedWebSocket<T = unknown> = WebSocket<T & WsData> & {
     sendJson: (data: unknown) => void;
 };
 
@@ -65,7 +65,7 @@ export class WsHandler {
     /**
      * Handle a new open connection.
      */
-    onOpen(ws: WebSocket): any {
+    onOpen(ws: any): any {
         if (this.server.options.debug) {
             Log.websocketTitle("👨‍🔬 New connection:");
             Log.websocket({ ws });
@@ -178,7 +178,7 @@ export class WsHandler {
      * Handle a received message from the client.
      */
     onMessage(
-        ws: WebSocket,
+        ws: WebSocket<unknown>,
         message: uWebSocketMessage,
         isBinary: boolean,
     ): any {
@@ -214,9 +214,9 @@ export class WsHandler {
             }
         }
 
-        if (ws.app) {
+        if ((ws as any).app) {
             this.server.metricsManager.markWsMessageReceived(
-                ws.app.id,
+                (ws as any).app.id,
                 message,
             );
         }
@@ -225,7 +225,11 @@ export class WsHandler {
     /**
      * Handle the event of the client closing the connection.
      */
-    onClose(ws: WebSocket, code: number, message: uWebSocketMessage): any {
+    onClose(
+        ws: WebSocket<unknown>,
+        code: number,
+        message: uWebSocketMessage,
+    ): any {
         if (this.server.options.debug) {
             Log.websocketTitle("❌ Connection closed:");
             Log.websocket({ ws, code, message });
@@ -240,7 +244,7 @@ export class WsHandler {
     /**
      * Evict the local socket.
      */
-    evictSocketFromMemory(ws: WebSocket): Promise<void> {
+    evictSocketFromMemory(ws: any): Promise<void> {
         return this.unsubscribeFromAllChannels(ws, true).then(() => {
             if (ws.app) {
                 this.server.adapter.removeSocket(ws.app.id, ws.id);
@@ -270,11 +274,11 @@ export class WsHandler {
                             .each(
                                 [...sockets],
                                 (
-                                    [wsId, ws]: [string, WebSocket],
+                                    [wsId, ws]: [string, WebSocket<unknown>],
                                     wsCallback,
                                 ) => {
                                     try {
-                                        ws.sendJson({
+                                        (ws as any).sendJson({
                                             event: "pusher:error",
                                             data: {
                                                 code: 4200,
@@ -329,7 +333,7 @@ export class WsHandler {
     /**
      * Send back the pong response.
      */
-    handlePong(ws: WebSocket): any {
+    handlePong(ws: any): any {
         ws.sendJson({
             event: "pusher:pong",
             data: {},
@@ -353,7 +357,7 @@ export class WsHandler {
     /**
      * Instruct the server to subscribe the connection to the channel.
      */
-    subscribeToChannel(ws: WebSocket, message: PusherMessage): any {
+    subscribeToChannel(ws: any, message: PusherMessage): any {
         if (this.server.closing) {
             ws.sendJson({
                 event: "pusher:error",
@@ -520,7 +524,7 @@ export class WsHandler {
      * Instruct the server to unsubscribe the connection from the channel.
      */
     unsubscribeFromChannel(
-        ws: WebSocket,
+        ws: any,
         channel: string,
         closing = false,
     ): Promise<void> {
@@ -595,7 +599,7 @@ export class WsHandler {
     /**
      * Unsubscribe the connection from all channels.
      */
-    unsubscribeFromAllChannels(ws: WebSocket, closing = true): Promise<void> {
+    unsubscribeFromAllChannels(ws: any, closing = true): Promise<void> {
         if (!ws.subscribedChannels) {
             return Promise.resolve();
         }
@@ -617,7 +621,7 @@ export class WsHandler {
     /**
      * Handle the events coming from the client.
      */
-    handleClientEvent(ws: WebSocket, message: PusherMessage): any {
+    handleClientEvent(ws: any, message: PusherMessage): any {
         let { event, data, channel } = message;
 
         if (!ws.app.enableClientMessages) {
@@ -724,7 +728,7 @@ export class WsHandler {
     /**
      * Handle the signin coming from the frontend.
      */
-    handleSignin(ws: WebSocket, message: PusherMessage): void {
+    handleSignin(ws: any, message: PusherMessage): void {
         if (!ws.userAuthenticationTimeout) {
             return;
         }
@@ -798,16 +802,20 @@ export class WsHandler {
     /**
      * Send the first event as cache_missed, if it exists, to catch up.
      */
-    sendMissedCacheIfExists(ws: WebSocket, channel: string) {
+    sendMissedCacheIfExists(ws: WebSocket<unknown>, channel: string) {
+        const wsocket = ws as any;
         this.server.cacheManager
-            .get(`app:${ws.app.id}:channel:${channel}:cache_miss`)
+            .get(`app:${wsocket.app.id}:channel:${channel}:cache_miss`)
             .then((cachedEvent) => {
                 if (cachedEvent) {
                     let { event, data } = JSON.parse(cachedEvent);
-                    ws.sendJson({ event: event, channel, data: data });
+                    wsocket.sendJson({ event: event, channel, data: data });
                 } else {
-                    ws.sendJson({ event: "pusher:cache_miss", channel });
-                    this.server.webhookSender.sendCacheMissed(ws.app, channel);
+                    wsocket.sendJson({ event: "pusher:cache_miss", channel });
+                    this.server.webhookSender.sendCacheMissed(
+                        wsocket.app,
+                        channel,
+                    );
                 }
             });
     }
@@ -837,27 +845,30 @@ export class WsHandler {
     /**
      * Use the app manager to retrieve a valid app.
      */
-    protected checkForValidApp(ws: WebSocket): Promise<App | null> {
-        return this.server.appManager.findByKey(ws.appKey);
+    protected checkForValidApp(ws: WebSocket<unknown>): Promise<App | null> {
+        return this.server.appManager.findByKey((ws as any).appKey);
     }
 
     /**
      * Make sure that the app is enabled.
      */
-    protected checkIfAppIsEnabled(ws: WebSocket): Promise<boolean> {
-        return Promise.resolve(ws.app.enabled);
+    protected checkIfAppIsEnabled(ws: WebSocket<unknown>): Promise<boolean> {
+        return Promise.resolve((ws as any).app.enabled);
     }
 
     /**
      * Make sure the connection limit is not reached with this connection.
      * Return a boolean wether the user can connect or not.
      */
-    protected checkAppConnectionLimit(ws: WebSocket): Promise<boolean> {
+    protected checkAppConnectionLimit(
+        ws: WebSocket<unknown>,
+    ): Promise<boolean> {
+        const app = (ws as any).app;
         return this.server.adapter
-            .getSocketsCount(ws.app.id)
+            .getSocketsCount(app.id)
             .then((wsCount) => {
                 let maxConnections =
-                    parseInt(ws.app.maxConnections as string) || -1;
+                    parseInt(app.maxConnections as string) || -1;
 
                 if (maxConnections < 0) {
                     return true;
@@ -875,7 +886,7 @@ export class WsHandler {
      * Check is an incoming connection can subscribe.
      */
     signinTokenIsValid(
-        ws: WebSocket,
+        ws: WebSocket<unknown>,
         userData: string,
         signatureToCheck: string,
     ): Promise<boolean> {
@@ -890,14 +901,15 @@ export class WsHandler {
      * Get the signin token from the given message, by the Socket.
      */
     protected signinTokenForUserData(
-        ws: WebSocket,
+        ws: WebSocket<unknown>,
         userData: string,
     ): Promise<string> {
+        const wsocket = ws as any;
         return new Promise((resolve) => {
-            let decodedString = `${ws.id}::user::${userData}`;
-            let token = new Pusher.Token(ws.app.key, ws.app.secret);
+            let decodedString = `${wsocket.id}::user::${userData}`;
+            let token = new Pusher.Token(wsocket.app.key, wsocket.app.secret);
 
-            resolve(ws.app.key + ":" + token.sign(decodedString));
+            resolve(wsocket.app.key + ":" + token.sign(decodedString));
         });
     }
 
@@ -915,21 +927,22 @@ export class WsHandler {
     }
 
     /**
-     * Clear WebSocket timeout.
+     * Clear WebSocket<unknown> timeout.
      */
-    protected clearTimeout(ws: WebSocket): void {
-        if (ws.timeout) {
-            clearTimeout(ws.timeout);
+    protected clearTimeout(ws: WebSocket<unknown>): void {
+        const timeout = (ws as any).timeout;
+        if (timeout) {
+            clearTimeout(timeout);
         }
     }
 
     /**
-     * Update WebSocket timeout.
+     * Update WebSocket<unknown> timeout.
      */
-    protected updateTimeout(ws: WebSocket): void {
+    protected updateTimeout(ws: WebSocket<unknown>): void {
         this.clearTimeout(ws);
 
-        ws.timeout = setTimeout(() => {
+        (ws as any).timeout = setTimeout(() => {
             try {
                 ws.end(4201);
             } catch (e) {
@@ -941,9 +954,10 @@ export class WsHandler {
     /**
      * Set the authentication timeout for the socket.
      */
-    protected setUserAuthenticationTimeout(ws: WebSocket): void {
-        ws.userAuthenticationTimeout = setTimeout(() => {
-            ws.sendJson({
+    protected setUserAuthenticationTimeout(ws: WebSocket<unknown>): void {
+        const wsocket = ws as any;
+        wsocket.userAuthenticationTimeout = setTimeout(() => {
+            wsocket.sendJson({
                 event: "pusher:error",
                 data: {
                     code: 4009,
@@ -952,7 +966,7 @@ export class WsHandler {
             });
 
             try {
-                ws.end(4009);
+                wsocket.end(4009);
             } catch (e) {
                 //
             }

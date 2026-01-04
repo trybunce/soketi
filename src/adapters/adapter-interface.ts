@@ -1,8 +1,8 @@
-import { Namespace } from '../namespace';
-import { PresenceMemberInfo } from '../channels/presence-channel-manager';
-import { WebSocket } from 'uWebSockets.js';
+import { Namespace } from "../namespace";
+import { PresenceMemberInfo } from "../channels/presence-channel-manager";
+import { WebSocket } from "uWebSockets.js";
 
-const Discover = require('node-discover');
+const Discover = require("node-discover");
 
 export interface AdapterInterface {
     /**
@@ -33,7 +33,7 @@ export interface AdapterInterface {
     /**
      * Add a new socket to the namespace.
      */
-    addSocket(appId: string, ws: WebSocket): Promise<boolean>;
+    addSocket(appId: string, ws: WebSocket<unknown>): Promise<boolean>;
 
     /**
      * Remove a socket from the namespace.
@@ -44,23 +44,36 @@ export interface AdapterInterface {
      * Add a socket ID to the channel identifier.
      * Return the total number of connections after the connection.
      */
-    addToChannel(appId: string, channel: string, ws: WebSocket): Promise<number>;
+    addToChannel(
+        appId: string,
+        channel: string,
+        ws: WebSocket<unknown>,
+    ): Promise<number>;
 
     /**
      * Remove a socket ID from the channel identifier.
      * Return the total number of connections remaining to the channel.
      */
-    removeFromChannel(appId: string, channel: string|string[], wsId: string): Promise<number|void>;
+    removeFromChannel(
+        appId: string,
+        channel: string | string[],
+        wsId: string,
+    ): Promise<number | void>;
 
     /**
      * Send a message to a namespace and channel.
      */
-    send(appId: string, channel: string, data: string, exceptingId?: string|null): any;
+    send(
+        appId: string,
+        channel: string,
+        data: string,
+        exceptingId?: string | null,
+    ): any;
 
     /**
      * Terminate an User ID's connections.
      */
-    terminateUserConnections(appId: string, userId: number|string): void;
+    terminateUserConnections(appId: string, userId: number | string): void;
 
     /**
      * Clear the connection for the adapter.
@@ -80,7 +93,10 @@ export interface AdapterInterface {
     /**
      * Get all sockets from the namespace.
      */
-    getSockets(appId: string, onlyLocal?: boolean): Promise<Map<string, WebSocket>>;
+    getSockets(
+        appId: string,
+        onlyLocal?: boolean,
+    ): Promise<Map<string, WebSocket<unknown>>>;
 
     /**
      * Get total sockets count.
@@ -90,50 +106,80 @@ export interface AdapterInterface {
     /**
      * Get the list of channels with the websocket IDs.
      */
-    getChannels(appId: string, onlyLocal?: boolean): Promise<Map<string, Set<string>>>;
+    getChannels(
+        appId: string,
+        onlyLocal?: boolean,
+    ): Promise<Map<string, Set<string>>>;
 
     /**
      * Get the list of channels with the websockets count.
      */
-    getChannelsWithSocketsCount(appId: string, onlyLocal?: boolean): Promise<Map<string, number>>;
+    getChannelsWithSocketsCount(
+        appId: string,
+        onlyLocal?: boolean,
+    ): Promise<Map<string, number>>;
 
     /**
      * Get all the channel sockets associated with a namespace.
      */
-    getChannelSockets(appId: string, channel: string, onlyLocal?: boolean): Promise<Map<string, WebSocket>>;
+    getChannelSockets(
+        appId: string,
+        channel: string,
+        onlyLocal?: boolean,
+    ): Promise<Map<string, WebSocket<unknown>>>;
 
     /**
      * Get a given channel's total sockets count.
      */
-    getChannelSocketsCount(appId: string, channel: string, onlyLocal?: boolean): Promise<number>;
+    getChannelSocketsCount(
+        appId: string,
+        channel: string,
+        onlyLocal?: boolean,
+    ): Promise<number>;
 
     /**
      * Get a given presence channel's members.
      */
-    getChannelMembers(appId: string, channel: string, onlyLocal?: boolean): Promise<Map<string, PresenceMemberInfo>>;
+    getChannelMembers(
+        appId: string,
+        channel: string,
+        onlyLocal?: boolean,
+    ): Promise<Map<string, PresenceMemberInfo>>;
 
     /**
      * Get a given presence channel's members count
      */
-    getChannelMembersCount(appId: string, channel: string, onlyLocal?: boolean): Promise<number>;
+    getChannelMembersCount(
+        appId: string,
+        channel: string,
+        onlyLocal?: boolean,
+    ): Promise<number>;
 
     /**
      * Check if a given connection ID exists in a channel.
      */
-    isInChannel(appId: string, channel: string, wsId: string, onlyLocal?: boolean): Promise<boolean>;
+    isInChannel(
+        appId: string,
+        channel: string,
+        wsId: string,
+        onlyLocal?: boolean,
+    ): Promise<boolean>;
 
     /**
      * Add to the users list the associated socket connection ID.
      */
-    addUser(ws: WebSocket): Promise<void>;
+    addUser(ws: WebSocket<unknown>): Promise<void>;
 
     /**
      * Remove the user associated with the connection ID.
      */
-    removeUser(ws: WebSocket): Promise<void>;
+    removeUser(ws: WebSocket<unknown>): Promise<void>;
 
     /**
      * Get the sockets associated with an user.
      */
-    getUserSockets(appId: string, userId: string|number): Promise<Set<WebSocket>>;
+    getUserSockets(
+        appId: string,
+        userId: string | number,
+    ): Promise<Set<WebSocket<unknown>>>;
 }
